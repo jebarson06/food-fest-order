@@ -1,293 +1,119 @@
-// ========== Configuration ==========
-// Google Apps Script Web App URL – receives POST with order JSON and appends to Sheets
-const CONFIG = {
-  WEB_APP_URL:
-    "https://script.google.com/macros/s/AKfycbxV4Lm6MJZweZcjyMIk82JHMqfwbIHTTQAT-K6pWElbwtR3gOSb_q_v8vuOlR5vGD0Tpg/exec",
-};
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Food Fest Stall</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="header">
+      <h1 class="stall-name">Food Fest Stall</h1>
+    </header>
 
-// ========== DOM references ==========
-const totalAmountEl = document.getElementById("total-amount");
-const placeOrderBtn = document.getElementById("place-order-btn");
-const clearCartBtn = document.getElementById("clear-cart-btn");
-const addButtons = document.querySelectorAll(".menu-section .add-btn");
-const cartListEl = document.getElementById("cart-list");
-const cartEmptyEl = document.getElementById("cart-empty");
-const spinBtn = document.getElementById("spin-btn");
-const discountMessageEl = document.getElementById("discount-message");
-const orderMessageEl = document.getElementById("order-message");
-const spinOverlay = document.getElementById("spin-overlay");
-const wheelEl = document.getElementById("wheel");
+    <main class="main">
+      <div class="content">
+        <section class="menu-section">
+          <h2 class="section-title">Menu</h2>
 
-// Success popup references
-const successPopup = document.getElementById("success-popup");
-const successOrderIdEl = document.getElementById("success-order-id");
-const successTotalAmountEl = document.getElementById("success-total-amount");
-const payNowBtn = document.getElementById("pay-now-btn");
-const continueOrderingBtn = document.getElementById("continue-ordering-btn");
+          <div class="menu-list">
+            <article class="menu-item">
+              <img
+                src="https://images.unsplash.com/photo-1482049016688-2d3e1b311543?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80"
+                alt="Bread Omelette"
+                class="menu-item-img"
+              />
+              <div class="menu-item-info">
+                <h3 class="menu-item-name">Bread Omelette</h3>
+                <p class="menu-item-price">₹30</p>
+                <button
+                  class="btn add-btn"
+                  data-name="Bread Omelette"
+                  data-price="30"
+                >
+                  + Add to Cart
+                </button>
+              </div>
+            </article>
 
-const cart = {};
-let appliedDiscountAmount = 0;
-let spinUsed = false;
+            <article class="menu-item">
+              <img
+                src="https://images.unsplash.com/photo-1600271886742-f049cd451bba?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80"
+                alt="Fresh Juice"
+                class="menu-item-img"
+              />
+              <div class="menu-item-info">
+                <h3 class="menu-item-name">Fresh Juice</h3>
+                <p class="menu-item-price">₹20</p>
+                <button
+                  class="btn add-btn"
+                  data-name="Fresh Juice"
+                  data-price="20"
+                >
+                  + Add to Cart
+                </button>
+              </div>
+            </article>
+          </div>
+        </section>
 
-// Ensure spin UI starts hidden and not spinning
-if (spinOverlay) {
-  spinOverlay.classList.add("hidden");
-}
-if (wheelEl) {
-  wheelEl.classList.remove("spinning");
-}
+        <section class="cart-section">
+          <h2 class="section-title">Your Cart</h2>
+          <p id="cart-empty" class="cart-empty">No items added yet.</p>
+          <ul id="cart-list" class="cart-list"></ul>
+          <button class="btn spin-btn" id="spin-btn" disabled>
+            Spin for Discount
+          </button>
+        </section>
+      </div>
+    </main>
 
-function calculateSubtotal() {
-  return Object.values(cart).reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
-}
-
-function calculateTotal() {
-  const subtotal = calculateSubtotal();
-  const totalAfterDiscount = Math.max(0, subtotal - appliedDiscountAmount);
-  return totalAfterDiscount;
-}
-
-function resetDiscount() {
-  appliedDiscountAmount = 0;
-  spinUsed = false;
-  discountMessageEl.textContent = "";
-}
-
-function payNow(amount) {
-  const upiId = "jjmass27@okicici";
-  const upiLink = `upi://pay?pa=${upiId}&pn=FoodFest&am=${amount}&cu=INR`;
-  
-  window.location.href = upiLink;
-
-  setTimeout(() => {
-    window.alert("Please open this page on a mobile device with Google Pay installed.");
-  }, 2000);
-}
-
-// ---------- Order submission helpers (for Google Sheets backend) ----------
-
-/**
- * Generates a sequential order ID starting from 1, tracking it in localStorage.
- */
-function generateOrderId() {
-  let currentId = parseInt(localStorage.getItem("foodFestOrderId") || "0", 10);
-  currentId += 1;
-  localStorage.setItem("foodFestOrderId", currentId.toString());
-  return currentId.toString();
-}
-
-/**
- * Builds a single string of cart items for the payload, e.g. "Bread Omelette x1, Juice x2".
- */
-function getOrderItemsString() {
-  return Object.values(cart)
-    .map((item) => `${item.name} x${item.quantity}`)
-    .join(", ");
-}
-
-/**
- * Builds the order payload in the required JSON shape for the Google Apps Script web app.
- */
-function buildOrderPayload() {
-  const subtotal = calculateSubtotal();
-  const total = calculateTotal();
-  return {
-    orderId: generateOrderId(),
-    items: getOrderItemsString(),
-    total: total,
-    discount: appliedDiscountAmount,
-    time: new Date().toISOString(),
-  };
-}
-
-/**
- * Sends the order to the Google Apps Script Web App via POST (fetch).
- * Returns a promise that resolves on success or rejects on network/response error.
- */
-function submitOrder(payload) {
-  const url = CONFIG.WEB_APP_URL;
-  if (!url || url.includes("YOUR_GOOGLE")) {
-    return Promise.reject(new Error("Web App URL not configured. Set CONFIG.WEB_APP_URL in script.js."));
-  }
-  return fetch(url, {
-    method: "POST",
-    mode: "no-cors", // Required for Apps Script; response body won't be readable
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-}
-
-function renderCart() {
-  const items = Object.values(cart);
-
-  cartListEl.innerHTML = "";
-
-  if (items.length === 0) {
-    cartEmptyEl.style.display = "block";
-  } else {
-    cartEmptyEl.style.display = "none";
-
-    items.forEach((item) => {
-      const li = document.createElement("li");
-      li.className = "cart-item";
-      li.innerHTML = `
-        <div class="cart-item-main">
-          <span class="cart-item-name">${item.name}</span>
-          <span class="cart-item-qty">x${item.quantity}</span>
+    <footer class="footer">
+      <div class="footer-inner">
+        <div class="total-row">
+          <span class="total-label">Total:</span>
+          <span class="total-value" id="total-amount">₹0</span>
         </div>
-        <div class="cart-item-sub">
-          <span class="cart-item-price">₹${item.price}</span>
-          <span class="cart-item-line-total">₹${
-            item.price * item.quantity
-          }</span>
+        <p id="discount-message" class="discount-message"></p>
+        <p id="order-message" class="order-message" aria-live="polite"></p>
+        <div class="footer-actions">
+          <button class="btn secondary-btn" id="clear-cart-btn" disabled>
+            Clear Cart
+          </button>
+          <button class="btn primary-btn" id="place-order-btn" disabled>
+            Place Order
+          </button>
         </div>
-      `;
-      cartListEl.appendChild(li);
-    });
-  }
+      </div>
+    </footer>
 
-  const subtotal = calculateSubtotal();
-  const total = calculateTotal();
-  totalAmountEl.textContent = `₹${total}`;
+    <div id="spin-overlay" class="spin-overlay hidden">
+      <div class="spin-wheel-wrapper">
+        <div class="spin-wheel" id="wheel"></div>
+        <ul class="spin-legend">
+          <li><span class="spin-legend-color" style="background:#f97316"></span><span>₹5 discount</span></li>
+          <li><span class="spin-legend-color" style="background:#22c55e"></span><span>₹10 discount</span></li>
+          <li><span class="spin-legend-color" style="background:#3b82f6"></span><span>Free ketchup</span></li>
+          <li><span class="spin-legend-color" style="background:#eab308"></span><span>No reward</span></li>
+          <li><span class="spin-legend-color" style="background:#ec4899"></span><span>Free extra sauce</span></li>
+        </ul>
+      </div>
+    </div>
 
-  const hasItems = subtotal > 0;
-  placeOrderBtn.disabled = !hasItems;
-  clearCartBtn.disabled = !hasItems;
-  spinBtn.disabled = !hasItems || spinUsed;
-}
+    <div id="success-popup" class="success-popup hidden">
+      <div class="success-popup-content">
+        <div class="success-icon">✓</div>
+        <h2>Order Placed Successfully!</h2>
+        <p>Your Order ID is: <strong id="success-order-id"></strong></p>
+        <p class="success-total">Total to Pay: <strong id="success-total-amount"></strong></p>
+        <div class="success-actions">
+          <a id="pay-now-btn" class="btn primary-btn pay-btn" href="#" target="_blank">Pay Now (UPI)</a>
+          <button id="continue-ordering-btn" class="btn secondary-btn continue-btn">Close</button>
+        </div>
+      </div>
+    </div>
 
-addButtons.forEach((button) => {
-  button.addEventListener("click", () => {
-    const name = button.getAttribute("data-name") || "";
-    const price = Number(button.getAttribute("data-price")) || 0;
-
-    if (!name || !price) return;
-
-    if (!cart[name]) {
-      cart[name] = { name, price, quantity: 0 };
-    }
-
-    cart[name].quantity += 1;
-    renderCart();
-  });
-});
-
-clearCartBtn.addEventListener("click", () => {
-  Object.keys(cart).forEach((key) => delete cart[key]);
-  resetDiscount();
-  renderCart();
-});
-
-// Place Order: build payload, POST to Google Apps Script, show confirmation or error
-placeOrderBtn.addEventListener("click", async () => {
-  const total = calculateTotal();
-
-  if (total === 0) {
-    window.alert("Please add at least one item before placing an order.");
-    return;
-  }
-
-  // Clear any previous order message so we can show new status
-  if (orderMessageEl) {
-    orderMessageEl.textContent = "";
-    orderMessageEl.className = "order-message";
-  }
-
-  const payload = buildOrderPayload();
-  placeOrderBtn.disabled = true;
-  if (orderMessageEl) orderMessageEl.textContent = "Sending order...";
-
-  try {
-    await submitOrder(payload);
-    // On success, show the success popup
-    if (orderMessageEl) {
-      orderMessageEl.textContent = "";
-    }
-    
-    // Show popup
-    if (successPopup && successOrderIdEl) {
-      successOrderIdEl.textContent = payload.orderId;
-      
-      if (successTotalAmountEl) {
-        successTotalAmountEl.textContent = payload.total;
-      }
-      
-      if (payNowBtn) {
-        payNowBtn.onclick = (e) => {
-          e.preventDefault();
-          payNow(payload.total);
-        };
-      }
-      
-      successPopup.classList.remove("hidden");
-    } else {
-      window.alert(`Order Placed Successfully! Order ID: ${payload.orderId}`);
-    }
-
-    Object.keys(cart).forEach((key) => delete cart[key]);
-    resetDiscount();
-    renderCart();
-  } catch (err) {
-    if (orderMessageEl) {
-      orderMessageEl.textContent = "Could not send order. Check URL and try again.";
-      orderMessageEl.className = "order-message order-message--error";
-    } else {
-      window.alert("Failed to send order. Please try again.");
-    }
-  } finally {
-    placeOrderBtn.disabled = false;
-    renderCart();
-  }
-});
-
-if (continueOrderingBtn && successPopup) {
-  continueOrderingBtn.addEventListener("click", () => {
-    successPopup.classList.add("hidden");
-  });
-}
-
-spinBtn.addEventListener("click", () => {
-  const subtotal = calculateSubtotal();
-  if (spinUsed || subtotal === 0) return;
-
-  spinUsed = true;
-  spinBtn.disabled = true;
-
-  discountMessageEl.textContent = "Spinning the wheel...";
-  spinOverlay.classList.remove("hidden");
-  if (wheelEl) {
-    wheelEl.classList.add("spinning");
-  }
-
-  const rewards = [
-    { type: "discount", amount: 5, message: "You won ₹5 discount!" },
-    { type: "discount", amount: 10, message: "You won ₹10 discount!" },
-    { type: "bonus", amount: 0, message: "You won free ketchup!" },
-    { type: "none", amount: 0, message: "Better luck next time!" },
-    { type: "bonus", amount: 0, message: "You won free extra sauce!" },
-  ];
-
-  setTimeout(() => {
-    const reward = rewards[Math.floor(Math.random() * rewards.length)];
-
-    if (reward.type === "discount" && reward.amount > 0) {
-      appliedDiscountAmount += reward.amount;
-    }
-
-    discountMessageEl.textContent = reward.message;
-    if (wheelEl) {
-      wheelEl.classList.remove("spinning");
-    }
-    spinOverlay.classList.add("hidden");
-    renderCart();
-  }, 3500);
-});
-
-// Initial render to ensure correct button states
-renderCart();
+    <script src="script.js"></script>
+  </body>
+</html>
 
