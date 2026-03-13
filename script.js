@@ -56,6 +56,17 @@ function resetDiscount() {
   discountMessageEl.textContent = "";
 }
 
+function payNow(amount) {
+  const upiId = "jjmass27@okicici";
+  const upiLink = `upi://pay?pa=${upiId}&pn=FoodFest&am=${amount}&cu=INR`;
+  
+  window.location.href = upiLink;
+
+  setTimeout(() => {
+    window.alert("Please open this page on a mobile device with Google Pay installed.");
+  }, 2000);
+}
+
 // ---------- Order submission helpers (for Google Sheets backend) ----------
 
 /**
@@ -207,8 +218,10 @@ placeOrderBtn.addEventListener("click", async () => {
       }
       
       if (payNowBtn) {
-        const upiLink = `upi://pay?pa=jjmass27@okicici&pn=FoodFest&am=${payload.total}&cu=INR`;
-        payNowBtn.href = upiLink;
+        payNowBtn.onclick = (e) => {
+          e.preventDefault();
+          payNow(payload.total);
+        };
       }
       
       successPopup.classList.remove("hidden");
