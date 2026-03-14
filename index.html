@@ -4,84 +4,62 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Food Fest Stall</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body>
+  <body class="fade-in">
     <header class="header">
-      <h1 class="stall-name">Food Fest Stall</h1>
+      <div class="header-inner">
+        <h1 class="stall-name stall-name-top">Food-Fest-Stall</h1>
+        <button id="admin-toggle-btn" class="icon-btn" aria-label="Admin Settings">⚙️</button>
+      </div>
     </header>
 
     <main class="main">
       <div class="content">
         <section class="menu-section">
           <h2 class="section-title">Menu</h2>
-
-          <div class="menu-list">
-            <article class="menu-item">
-              <img
-                src="https://images.unsplash.com/photo-1482049016688-2d3e1b311543?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80"
-                alt="Bread Omelette"
-                class="menu-item-img"
-              />
-              <div class="menu-item-info">
-                <h3 class="menu-item-name">Bread Omelette</h3>
-                <p class="menu-item-price">₹30</p>
-                <button
-                  class="btn add-btn"
-                  data-name="Bread Omelette"
-                  data-price="30"
-                >
-                  + Add to Cart
-                </button>
-              </div>
-            </article>
-
-            <article class="menu-item">
-              <img
-                src="https://images.unsplash.com/photo-1600271886742-f049cd451bba?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80"
-                alt="Fresh Juice"
-                class="menu-item-img"
-              />
-              <div class="menu-item-info">
-                <h3 class="menu-item-name">Fresh Juice</h3>
-                <p class="menu-item-price">₹20</p>
-                <button
-                  class="btn add-btn"
-                  data-name="Fresh Juice"
-                  data-price="20"
-                >
-                  + Add to Cart
-                </button>
-              </div>
-            </article>
+          <div class="menu-list" id="menu-container">
+            <!-- Menu items injected via JS -->
           </div>
         </section>
 
         <section class="cart-section">
-          <h2 class="section-title">Your Cart</h2>
+          <div class="cart-header">
+            <h2 class="section-title">Your Cart</h2>
+            <button class="btn text-btn" id="clear-cart-btn" disabled>Clear</button>
+          </div>
           <p id="cart-empty" class="cart-empty">No items added yet.</p>
           <ul id="cart-list" class="cart-list"></ul>
-          <button class="btn spin-btn" id="spin-btn" disabled>
-            Spin for Discount
-          </button>
+          
+          <div class="lucky-offer-banner">
+            <button class="btn spin-btn" id="spin-btn" disabled>
+              Spin Now
+            </button>
+          </div>
         </section>
       </div>
     </main>
 
     <footer class="footer">
-      <div class="footer-inner">
-        <div class="total-row">
-          <span class="total-label">Total:</span>
-          <span class="total-value" id="total-amount">₹0</span>
+      <div class="footer-inner sticky-bottom-bar payment-section payment-section-hidden" id="sticky-checkout" aria-hidden="true">
+        <div class="order-summary">
+          <div class="summary-top">
+            <span id="cart-item-count" class="item-count-badge">0 Items</span>
+            <div id="total-amount-container" class="total-breakdown">
+              <span id="subtotal-amount" class="subtotal-line"></span>
+              <span id="discount-amount" class="discount-line"></span>
+              <span class="total-value" id="total-amount">₹0</span>
+            </div>
+          </div>
+          <p id="discount-message" class="discount-message"></p>
+          <p id="order-message" class="order-message" aria-live="polite"></p>
         </div>
-        <p id="discount-message" class="discount-message"></p>
-        <p id="order-message" class="order-message" aria-live="polite"></p>
         <div class="footer-actions">
-          <button class="btn secondary-btn" id="clear-cart-btn" disabled>
-            Clear Cart
-          </button>
-          <button class="btn primary-btn" id="place-order-btn" disabled>
-            Place Order
+          <button class="btn primary-btn" id="place-order-btn">
+            Proceed to Pay ➔
           </button>
         </div>
       </div>
@@ -89,14 +67,26 @@
 
     <div id="spin-overlay" class="spin-overlay hidden">
       <div class="spin-wheel-wrapper">
-        <div class="spin-wheel" id="wheel"></div>
-        <ul class="spin-legend">
-          <li><span class="spin-legend-color" style="background:#f97316"></span><span>₹5 discount</span></li>
-          <li><span class="spin-legend-color" style="background:#22c55e"></span><span>₹10 discount</span></li>
-          <li><span class="spin-legend-color" style="background:#3b82f6"></span><span>Free ketchup</span></li>
-          <li><span class="spin-legend-color" style="background:#eab308"></span><span>No reward</span></li>
-          <li><span class="spin-legend-color" style="background:#ec4899"></span><span>Free extra sauce</span></li>
-        </ul>
+        <div class="spin-arrow"></div>
+        <div class="spin-wheel" id="wheel">
+          <!-- Slices with specific CSS vars to handle rotation and colors -->
+          <div class="wheel-slice" style="--i:0; --c:#f97316;"><span>₹5 Off</span></div>
+          <div class="wheel-slice" style="--i:1; --c:#22c55e;"><span>₹10 Off</span></div>
+          <div class="wheel-slice" style="--i:2; --c:#3b82f6;"><span>₹20 Off</span></div>
+          <div class="wheel-slice" style="--i:3; --c:#eab308;"><span>Free Ketchup</span></div>
+          <div class="wheel-slice" style="--i:4; --c:#8b5cf6;"><span>Free Juice</span></div>
+          <div class="wheel-slice" style="--i:5; --c:#ec4899;"><span>No Luck</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Win Modal (Popup after spinning) -->
+    <div id="win-modal" class="modal hidden">
+      <div id="confetti-container"></div>
+      <div class="modal-content win-content text-center">
+        <h2 class="win-title">🎉 Congratulations!</h2>
+        <p class="win-message" id="win-message-text">You won: ₹10 Discount</p>
+        <button id="apply-offer-btn" class="btn primary-btn mt-16">Apply Offer</button>
       </div>
     </div>
 
@@ -109,6 +99,69 @@
         <div class="success-actions">
           <a id="pay-now-btn" class="btn primary-btn pay-btn" href="#" target="_blank">Pay Now (UPI)</a>
           <button id="continue-ordering-btn" class="btn secondary-btn continue-btn">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Admin Panel Modal -->
+    <div id="admin-modal" class="modal hidden">
+      <div class="modal-content admin-content">
+        <div class="modal-header">
+          <h2>Menu Administration</h2>
+          <button id="admin-close-btn" class="icon-btn close-btn">✕</button>
+        </div>
+        <div class="admin-body">
+          <form id="add-item-form" class="admin-form">
+            <h3>Add New Item</h3>
+            <div class="form-group">
+              <label for="item-name">Name</label>
+              <input type="text" id="item-name" required placeholder="e.g. Burger">
+            </div>
+            <div class="form-group">
+              <label for="item-price">Price (₹)</label>
+              <input type="number" id="item-price" required min="1" placeholder="e.g. 50">
+            </div>
+            <div class="form-group">
+              <label for="item-image">Image URL</label>
+              <input type="url" id="item-image" required placeholder="https://...">
+            </div>
+            <button type="submit" class="btn primary-btn">Add to Menu</button>
+          </form>
+
+          <hr class="admin-divider" />
+          
+          <h3>Manage Existing Items</h3>
+          <ul id="admin-menu-list" class="admin-menu-list">
+            <!-- Populated via JS -->
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Item Modal -->
+    <div id="edit-modal" class="modal hidden">
+      <div class="modal-content edit-content">
+        <div class="modal-header">
+          <h2>Edit Item</h2>
+          <button id="edit-close-btn" class="icon-btn close-btn">✕</button>
+        </div>
+        <div class="modal-body">
+          <form id="edit-item-form" class="admin-form">
+            <input type="hidden" id="edit-item-id">
+            <div class="form-group">
+              <label for="edit-item-name">Name</label>
+              <input type="text" id="edit-item-name" required>
+            </div>
+            <div class="form-group">
+              <label for="edit-item-price">Price (₹)</label>
+              <input type="number" id="edit-item-price" required min="1">
+            </div>
+            <div class="form-group">
+              <label for="edit-item-image">Image URL</label>
+              <input type="url" id="edit-item-image" required>
+            </div>
+            <button type="submit" class="btn primary-btn">Save Changes</button>
+          </form>
         </div>
       </div>
     </div>
