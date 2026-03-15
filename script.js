@@ -22,7 +22,6 @@ const wheelEl = document.getElementById("wheel");
 const successPopup = document.getElementById("success-popup");
 const successOrderIdEl = document.getElementById("success-order-id");
 const successTotalAmountEl = document.getElementById("success-total-amount");
-const payNowBtn = document.getElementById("pay-now-btn");
 const continueOrderingBtn = document.getElementById("continue-ordering-btn");
 
 // Admin modal references
@@ -48,11 +47,21 @@ const subtotalEl = document.getElementById("subtotal-amount");
 const discountAmountEl = document.getElementById("discount-amount");
 const totalAmountContainer = document.getElementById("total-amount-container");
 
+// Payment modal references (UPI QR)
+const paymentModal = document.getElementById("payment-modal");
+const paymentQrImg = document.getElementById("payment-qr-img");
+const paymentAmountEl = document.getElementById("payment-amount");
+const paymentUpiIdEl = document.getElementById("payment-upi-id");
+const paymentPaidBtn = document.getElementById("payment-paid-btn");
+const paymentCancelBtn = document.getElementById("payment-cancel-btn");
+const paymentCancelSecondaryBtn = document.getElementById("payment-cancel-secondary-btn");
+
 const cart = {};
 let appliedDiscountAmount = 0;
 let spinUsed = false;
 let currentReward = null;
 let currentWheelRotation = 0;
+let pendingOrderPayload = null;
 
 // Default items if fresh user
 const DEFAULT_MENU = [
@@ -156,32 +165,6 @@ function renderMenu() {
 
 const upiId = "kingsgladston1@okhdfcbank";
 const payeeName = "Food Fest Stall";
-
-function payNow(amount) {
-  if (!amount || isNaN(amount) || amount <= 0) {
-    window.alert("Invalid payment amount");
-    return;
-  }
-
-  // Ensure amount is a proper decimal string (some UPI apps are strict)
-  const amountStr = Number(amount).toFixed(2);
-
-  const upiLink = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(
-    payeeName
-  )}&am=${amountStr}&cu=INR`;
-  
-  console.log("Generated UPI Link:", upiLink);
-  
-  const startTime = Date.now();
-  window.location.href = upiLink;
-
-  setTimeout(() => {
-    const timeElapsed = Date.now() - startTime;
-    if (timeElapsed < 2500 && document.visibilityState === "visible") {
-      window.alert("Please open this website with Google Pay installed and ensure the UPI ID and amount are valid.");
-    }
-  }, 2000);
-}
 
 // ---------- Order submission helpers (for Google Sheets backend) ----------
 
@@ -325,8 +308,8 @@ clearCartBtn.addEventListener("click", () => {
   renderCart();
 });
 
-// Place Order: build payload, POST to Google Apps Script, show confirmation or error
-placeOrderBtn.addEventListener("click", async () => {
+// Place Order: open payment modal with UPI QR; order is saved only after "I Have Paid"
+placeOrderBtn.addEventListener("click", () => {
   const total = calculateTotal();
 
   if (total === 0) {
@@ -334,62 +317,119 @@ placeOrderBtn.addEventListener("click", async () => {
     return;
   }
 
-  // Clear any previous order message so we can show new status
+  // Clear any previous order message
   if (orderMessageEl) {
     orderMessageEl.textContent = "";
     orderMessageEl.className = "order-message";
   }
 
   const payload = buildOrderPayload();
-  placeOrderBtn.disabled = true;
-  if (orderMessageEl) orderMessageEl.textContent = "Sending order...";
+  pendingOrderPayload = payload;
 
-  try {
-    await submitOrder(payload);
-    // On success, show the success popup
-    if (orderMessageEl) {
-      orderMessageEl.textContent = "";
-    }
-    
-    // Show popup
-    if (successPopup && successOrderIdEl) {
-      successOrderIdEl.textContent = payload.orderId;
-      
-      if (successTotalAmountEl) {
-        successTotalAmountEl.textContent = payload.total;
-      }
-      
-      if (payNowBtn) {
-        payNowBtn.onclick = (e) => {
-          e.preventDefault();
-          payNow(payload.total);
-        };
-      }
-      
-      successPopup.classList.remove("hidden");
-    } else {
-      window.alert(`Order Placed Successfully! Order ID: ${payload.orderId}`);
+  // Prepare and show payment modal
+  if (paymentModal) {
+    const amountStr = Number(payload.total).toFixed(2);
+    const upiUri = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(
+      payeeName
+    )}&am=${amountStr}&cu=INR`;
+
+    if (paymentQrImg) {
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(
+        upiUri
+      )}`;
+      paymentQrImg.src = qrUrl;
+      paymentQrImg.alt = `UPI QR code to pay ₹${amountStr} to ${upiId}`;
     }
 
-    Object.keys(cart).forEach((key) => delete cart[key]);
-    resetDiscount();
-    renderCart();
-  } catch (err) {
-    if (orderMessageEl) {
-      orderMessageEl.textContent = "Could not send order. Check URL and try again.";
-      orderMessageEl.className = "order-message order-message--error";
-    } else {
-      window.alert("Failed to send order. Please try again.");
+    if (paymentAmountEl) {
+      paymentAmountEl.textContent = `₹${amountStr}`;
     }
-  } finally {
-    placeOrderBtn.disabled = false;
-    renderCart();
+
+    if (paymentUpiIdEl) {
+      paymentUpiIdEl.textContent = upiId;
+    }
+
+    paymentModal.classList.remove("hidden");
   }
 });
 
 if (continueOrderingBtn && successPopup) {
   continueOrderingBtn.addEventListener("click", () => {
     successPopup.classList.add("hidden");
+  });
+}
+
+// Payment modal actions
+if (paymentPaidBtn) {
+  paymentPaidBtn.addEventListener("click", async () => {
+    if (!pendingOrderPayload) {
+      paymentModal && paymentModal.classList.add("hidden");
+      return;
+    }
+
+    if (orderMessageEl) {
+      orderMessageEl.textContent = "Saving order...";
+      orderMessageEl.className = "order-message";
+    }
+
+    try {
+      await submitOrder(pendingOrderPayload);
+
+      // Show confirmation popup with order ID
+      if (successPopup && successOrderIdEl) {
+        successOrderIdEl.textContent = pendingOrderPayload.orderId;
+        if (successTotalAmountEl) {
+          successTotalAmountEl.textContent = pendingOrderPayload.total;
+        }
+        successPopup.classList.remove("hidden");
+      } else {
+        window.alert(
+          `Order received! Your order number is #${pendingOrderPayload.orderId}.`
+        );
+      }
+
+      if (orderMessageEl) {
+        orderMessageEl.textContent = "";
+      }
+
+      // Clear cart and discount after successful save
+      Object.keys(cart).forEach((key) => delete cart[key]);
+      resetDiscount();
+      renderCart();
+    } catch (err) {
+      if (orderMessageEl) {
+        orderMessageEl.textContent =
+          "Could not save order. Please try again after checking your connection.";
+        orderMessageEl.className = "order-message order-message--error";
+      } else {
+        window.alert(
+          "Could not save order to Google Sheets. Please try again."
+        );
+      }
+    } finally {
+      pendingOrderPayload = null;
+      if (paymentModal) {
+        paymentModal.classList.add("hidden");
+      }
+    }
+  });
+}
+
+function closePaymentModal() {
+  if (paymentModal) {
+    paymentModal.classList.add("hidden");
+  }
+}
+
+if (paymentCancelBtn) {
+  paymentCancelBtn.addEventListener("click", () => {
+    closePaymentModal();
+  });
+}
+
+if (paymentCancelSecondaryBtn) {
+  paymentCancelSecondaryBtn.addEventListener("click", () => {
+    closePaymentModal();
   });
 }
 
