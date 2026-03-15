@@ -154,14 +154,21 @@ function renderMenu() {
   });
 }
 
+const upiId = "kingsgladston1@okhdfcbank";
+const payeeName = "Food Fest Stall";
+
 function payNow(amount) {
   if (!amount || isNaN(amount) || amount <= 0) {
     window.alert("Invalid payment amount");
     return;
   }
 
-  const upiId = "jjmass27@okicici";
-  const upiLink = `upi://pay?pa=${upiId}&pn=FoodFest&am=${amount}&cu=INR`;
+  // Ensure amount is a proper decimal string (some UPI apps are strict)
+  const amountStr = Number(amount).toFixed(2);
+
+  const upiLink = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(
+    payeeName
+  )}&am=${amountStr}&cu=INR`;
   
   console.log("Generated UPI Link:", upiLink);
   
@@ -171,7 +178,7 @@ function payNow(amount) {
   setTimeout(() => {
     const timeElapsed = Date.now() - startTime;
     if (timeElapsed < 2500 && document.visibilityState === "visible") {
-      window.alert("Please open this website with Google Pay installed.");
+      window.alert("Please open this website with Google Pay installed and ensure the UPI ID and amount are valid.");
     }
   }, 2000);
 }
