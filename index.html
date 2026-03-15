@@ -59,7 +59,7 @@
         </div>
         <div class="footer-actions">
           <button class="btn primary-btn" id="place-order-btn">
-            Proceed to Pay ➔
+            Pay Now
           </button>
         </div>
       </div>
@@ -93,12 +93,41 @@
     <div id="success-popup" class="success-popup hidden">
       <div class="success-popup-content">
         <div class="success-icon">✓</div>
-        <h2>Order Placed Successfully!</h2>
+        <h2>Order received!</h2>
         <p>Your Order ID is: <strong id="success-order-id"></strong></p>
-        <p class="success-total">Total to Pay: <strong id="success-total-amount"></strong></p>
+        <p class="success-total">Total Paid: <strong id="success-total-amount"></strong></p>
         <div class="success-actions">
-          <a id="pay-now-btn" class="btn primary-btn pay-btn" href="#" target="_blank">Pay Now (UPI)</a>
           <button id="continue-ordering-btn" class="btn secondary-btn continue-btn">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payment Modal (UPI QR) -->
+    <div id="payment-modal" class="modal hidden">
+      <div class="modal-content payment-modal-content">
+        <div class="modal-header">
+          <h2>Complete Payment</h2>
+          <button id="payment-cancel-btn" class="icon-btn close-btn">✕</button>
+        </div>
+        <div class="modal-body payment-modal-body">
+          <div class="payment-amount-row">
+            <span class="payment-label">Amount</span>
+            <span id="payment-amount" class="payment-amount-value">₹0</span>
+          </div>
+          <div class="payment-qr-wrapper">
+            <img id="payment-qr-img" class="payment-qr-img" src="" alt="UPI QR code for payment" />
+          </div>
+          <div class="payment-upi-row">
+            <span class="payment-label">UPI ID</span>
+            <span id="payment-upi-id" class="payment-upi-id">kingsgladston1@okhdfcbank</span>
+          </div>
+          <p class="payment-instructions">
+            Scan this QR code using any UPI app (Google Pay, PhonePe, Paytm, etc.) to pay.
+          </p>
+          <div class="payment-actions">
+            <button id="payment-paid-btn" class="btn primary-btn">I Have Paid</button>
+            <button id="payment-cancel-secondary-btn" class="btn secondary-btn">Cancel</button>
+          </div>
         </div>
       </div>
     </div>
